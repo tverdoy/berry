@@ -6,6 +6,7 @@ import {Song} from "../build/Song/tact_Song";
 
 const songTitle = "Trap day"
 
+
 describe('Berry', () => {
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
