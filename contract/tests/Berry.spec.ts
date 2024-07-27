@@ -2,6 +2,7 @@ import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { toNano } from '@ton/core';
 import { Berry } from '../wrappers/Berry';
 import '@ton/test-utils';
+import { assert } from 'console';
 
 describe('Berry', () => {
     let blockchain: Blockchain;
@@ -23,7 +24,7 @@ describe('Berry', () => {
             {
                 $$type: 'Deploy',
                 queryId: 0n,
-            }
+            },
         );
 
         expect(deployResult.transactions).toHaveTransaction({
