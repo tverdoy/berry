@@ -15,6 +15,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      - run: cd contract
 
       - name: Setup Node
         uses: actions/setup-node@v4
