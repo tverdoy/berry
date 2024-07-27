@@ -12,10 +12,17 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contract
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - run: cd contract
+
+      - name: Setup contract
+        working-directory: ./app
+        run:
 
       - name: Setup Node
         uses: actions/setup-node@v4
