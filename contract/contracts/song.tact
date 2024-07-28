@@ -2,6 +2,8 @@ import "@stdlib/deploy";
 import "@stdlib/ownable";
 import "./album";
 
+const MaxBytesTitleChars: Int = 800;
+
 // Message for adding a song to the SongMaster contract
 message AddSong {
     songTitle: String;      // Title of the song
@@ -33,6 +35,18 @@ trait SongMaster {
     receive(addSong: AddSong) {
         require(context().sender == self.owner, "Only the owner can add songs");
 
+        // business logic checks
+        let songTitleBytes = addSong.songTitle.asSlice().bits();
+        require(songTitleBytes <= MaxBytesTitleChars, "Song title cannot be more than 100 characters");
+
+        if (addSong.albumTitle != null) {
+            let albumTitleBytes = addSong.albumTitle!!.asSlice().bits();
+
+            require(songTitleBytes != 0, "Song title cannot be empty");
+            require(albumTitleBytes != 0, "Album title cannot be empty");
+            require(albumTitleBytes <= MaxBytesTitleChars, "Album title cannot be more than 100 characters");
+        }
+
         if (addSong.albumTitle != null) {
             self.createAlbum(addSong.albumTitle!!, addSong.songTitle)
         } else {
@@ -47,6 +61,27 @@ trait SongMaster {
         require(context().sender == contractAddress(albumInit), "Only Album contract can notify add songs to the album");
 
         self.createSong(addSong.songTitle, contractAddress(albumInit))
+    }
+
+    // Get the address of the song.
+    get fun songAddress(songTitle: String, albumTitle: String?): Address {
+        let albumAddress: Address? = null;
+        if albumTitle != null {
+            let albumInit: StateInit = self.getAlbumInit(albumTitle!!);
+            albumAddress = contractAddress(albumInit);
+        }
+
+        let songInit: StateInit = self.getSongInit(songTitle, albumAddress);
+
+        return contractAddress(songInit)
+    }
+
+    get fun totalSongs(): Int {
+        return self.totalSongs
+    }
+
+    get fun totalAlbums(): Int {
+        return self.totalAlbums
     }
 
     // Send a message to the Song contract to create a song.
@@ -81,19 +116,6 @@ trait SongMaster {
             code: albumInit.code,
             data: albumInit.data
         });
-    }
-
-    // Get the address of the song.
-    get fun songAddress(songTitle: String, albumTitle: String?): Address {
-        let albumAddress: Address? = null;
-        if albumTitle != null {
-            let albumInit: StateInit = self.getAlbumInit(albumTitle!!);
-            albumAddress = contractAddress(albumInit);
-        }
-
-        let songInit: StateInit = self.getSongInit(songTitle, albumAddress);
-
-        return contractAddress(songInit)
     }
 
     // Get the initial state of the Song contract.

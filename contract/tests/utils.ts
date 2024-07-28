@@ -59,6 +59,16 @@ export function ExceptSuccess(result: SendMessageResult, from: Address, to: Addr
     })
 }
 
+// Check that transaction is failed
+export function ExceptFailed(result: SendMessageResult, from: Address, to: Address) {
+    expect(result.transactions).toHaveTransaction({
+        from: from,
+        to: to,
+        aborted: true,
+        deploy: false
+    })
+}
+
 /**
  * Check that transactions match the checks and count transactions.
  * @param transactions Transactions to check
@@ -102,7 +112,7 @@ export function ExceptTransactions(transactions: BlockchainTransaction[], checks
  *```
  */
 export function PrettyLogNamedTransactions(transactions: BlockchainTransaction[], contracts: {address: Address, name: string}[]) {
-    for (let i = 0; i < transactions.length - 1; i++) {
+    for (let i = 0; i < transactions.length; i++) {
         let pretty = prettyLogTransaction(transactions[i])
         contracts.forEach(contract => {
             pretty = pretty.replace(contract.address.toString(), contract.name)

@@ -1,6 +1,13 @@
-import {Blockchain, SandboxContract, TreasuryContract} from "@ton/sandbox";
+import {Blockchain, printTransactionFees, SandboxContract, TreasuryContract} from "@ton/sandbox";
 import {Berry} from "../build/Berry/tact_Berry";
-import {DeployBerry, ExceptSuccess, ExceptTransactions, GetRandomAlbumTitle, GetRandomSongTitle,} from "./utils";
+import {
+    DeployBerry,
+    ExceptFailed,
+    ExceptSuccess,
+    ExceptTransactions,
+    GetRandomAlbumTitle,
+    GetRandomSongTitle, PrettyLogNamedTransactions,
+} from "./utils";
 import {toNano} from "@ton/core";
 import {Song} from "../build/Song/tact_Song";
 import {Album} from "../build/Song/tact_Album";
@@ -66,6 +73,11 @@ describe('Song', () => {
             {from: album.address, to: berry.address, success: true},
             {from: berry.address, to: song.address, success: false, deploy: true},
         ])
+
+        const songTotal = await berry.getTotalSongs()
+        const albumTotal = await berry.getTotalAlbums()
+        expect(songTotal).toBeLessThanOrEqual(1n)
+        expect(albumTotal).toBeLessThanOrEqual(1n)
     });
 
     it('add song without album', async () => {
@@ -101,5 +113,60 @@ describe('Song', () => {
             {from: deployer.address, to: berry.address},
             {from: berry.address, to: song.address, success: false, deploy: true},
         ])
+
+        const songTotal = await berry.getTotalSongs()
+        const albumTotal = await berry.getTotalAlbums()
+        expect(songTotal).toBeLessThanOrEqual(1n)
+        expect(albumTotal).toBeLessThanOrEqual(0n)
+    });
+
+    it('should failed with empty song title', async () => {
+        const sendResult = await berry.send(
+            deployer.getSender(),
+            {
+                value: toNano("0.2"),
+            },
+            {
+                $$type: "AddSong",
+                songTitle: "",
+                albumTitle: GetRandomAlbumTitle()
+            }
+        )
+
+        ExceptFailed(sendResult, deployer.address, berry.address)
+        ExceptTransactions(sendResult.transactions, [
+            {from: deployer.address, to: berry.address},
+            {from: berry.address, to: deployer.address},
+        ])
+
+        const songTotal = await berry.getTotalSongs()
+        const albumTotal = await berry.getTotalAlbums()
+        expect(songTotal).toBeLessThanOrEqual(0n)
+        expect(albumTotal).toBeLessThanOrEqual(0n)
+    });
+
+    it('should failed with empty album title', async () => {
+        const sendResult = await berry.send(
+            deployer.getSender(),
+            {
+                value: toNano("0.2")
+            },
+            {
+                $$type: "AddSong",
+                songTitle: GetRandomSongTitle(),
+                albumTitle: ""
+            }
+        )
+
+        ExceptFailed(sendResult, deployer.address, berry.address)
+        ExceptTransactions(sendResult.transactions, [
+            {from: deployer.address, to: berry.address},
+            {from: berry.address, to: deployer.address},
+        ])
+
+        const songTotal = await berry.getTotalSongs()
+        const albumTotal = await berry.getTotalAlbums()
+        expect(songTotal).toBeLessThanOrEqual(0n)
+        expect(albumTotal).toBeLessThanOrEqual(0n)
     });
 })
