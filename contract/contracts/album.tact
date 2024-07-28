@@ -11,7 +11,7 @@ message AddSongToAlbum {
 
 message AddedSongToAlbumNotification {
     songTitle: String;
-    album: Address
+    albumAddress: Address
 }
 
 contract Album with Ownable {
@@ -40,7 +40,7 @@ contract Album with Ownable {
             mode: SendRemainingValue,
             body: AddedSongToAlbumNotification{
                 songTitle: addSong.songTitle,
-                album: myAddress()
+                albumAddress: myAddress()
             }.toCell(),
         });
     }

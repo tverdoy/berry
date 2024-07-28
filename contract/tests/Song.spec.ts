@@ -25,11 +25,11 @@ describe('Song', () => {
         const sendResult = await berry.send(
             deployer.getSender(),
             {
-                value: toNano("0.2")
+                value: toNano("0.05")
             },
             {
                 $$type: "AddSong",
-                title: songTitleFoo,
+                songTitle: songTitleFoo,
                 albumTitle: albumTitleFoo
             }
         )
@@ -59,6 +59,7 @@ describe('Song', () => {
             {from: album.address, to: berry.address, success: true},
             {from: berry.address, to: song.address, success: false, deploy: true},
         ])
+        blockchain
     });
 
     it('add song without album', async () => {
@@ -71,7 +72,7 @@ describe('Song', () => {
             },
             {
                 $$type: "AddSong",
-                title: songTitleFoo,
+                songTitle: songTitleFoo,
                 albumTitle: null
             }
         )

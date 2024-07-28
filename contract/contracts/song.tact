@@ -3,39 +3,28 @@ import "@stdlib/ownable";
 import "./album";
 
 message AddSong {
-    title: String;
+    songTitle: String;
     albumTitle: String?;
 }
 
 trait SongMaster {
+    totalSongs: Int;
+    totalAlbums: Int;
+
     receive(addSong: AddSong) {
         if (addSong.albumTitle != null) {
-            let albumInit = self.getAlbumInit(addSong.albumTitle!!);
-            let songAddress = self.songAddress(addSong.title, addSong.title);
-
-            send(SendParameters{
-                to:  contractAddress(albumInit),
-                value: 0,
-                bounce: false,
-                mode: SendRemainingValue,
-                body: AddSongToAlbum{
-                    songAddress: songAddress,
-                    songTitle: addSong.title
-                }.toCell(),
-                code: albumInit.code,
-                data: albumInit.data
-            });
+            self.createAlbum(addSong.albumTitle!!, addSong.songTitle)
         } else {
-            self.createSong(addSong.title, null)
+            self.createSong(addSong.songTitle, null)
         }
     }
 
     receive(addSong: AddedSongToAlbumNotification) {
-        self.createSong(addSong.songTitle, addSong.album)
+        self.createSong(addSong.songTitle, addSong.albumAddress)
     }
 
-    fun createSong(title: String, album: Address?) {
-        let songInit = self.getSongInit(title, album);
+    fun createSong(songTitle: String, albumAddress: Address?) {
+        let songInit = self.getSongInit(songTitle, albumAddress);
 
         send(SendParameters{
             to: contractAddress(songInit),
@@ -47,36 +36,55 @@ trait SongMaster {
         });
     }
 
-    get fun songAddress(title: String, albumTitle: String?): Address {
+    fun createAlbum(albumTitle: String, songTitle: String) {
+        let albumInit = self.getAlbumInit(albumTitle);
+        let songAddress = self.songAddress(songTitle, albumTitle);
+        self.totalAlbums += 1;
+
+        send(SendParameters{
+            to:  contractAddress(albumInit),
+            value: 0,
+            bounce: false,
+            mode: SendRemainingValue,
+            body: AddSongToAlbum{
+                songAddress: songAddress,
+                songTitle: songTitle
+            }.toCell(),
+            code: albumInit.code,
+            data: albumInit.data
+        });
+    }
+
+    get fun songAddress(songTitle: String, albumTitle: String?): Address {
         let albumAddress: Address? = null;
         if albumTitle != null {
             let albumInit: StateInit = self.getAlbumInit(albumTitle!!);
             albumAddress = contractAddress(albumInit);
         }
 
-        let songInit: StateInit = self.getSongInit(title, albumAddress);
+        let songInit: StateInit = self.getSongInit(songTitle, albumAddress);
 
         return contractAddress(songInit)
     }
 
-    fun getSongInit(title: String, album: Address?): StateInit {
-        return initOf Song(myAddress(), title, album);
+    fun getSongInit(songTitle: String, albumAdddress: Address?): StateInit {
+        return initOf Song(myAddress(), songTitle, albumAdddress);
     }
 
-    fun getAlbumInit(title: String): StateInit {
-        return initOf Album(myAddress(), title);
+    fun getAlbumInit(albumTitle: String): StateInit {
+        return initOf Album(myAddress(), albumTitle);
     }
 }
 
 contract Song with Ownable {
     owner: Address;
     title: String;
-    album: Address?;
+    albumAddress: Address?;
 
-    init(owner: Address, title: String, album: Address?) {
+    init(owner: Address, title: String, albumAddress: Address?) {
         self.owner = owner;
         self.title = title;
-        self.album = album;
+        self.albumAddress = albumAddress;
     }
 
     get fun title(): String {
@@ -84,7 +92,7 @@ contract Song with Ownable {
     }
 
     get fun album(): Address? {
-        return self.album
+        return self.albumAddress
     }
 }
 

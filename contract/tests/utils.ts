@@ -25,7 +25,6 @@ export function GetRandomAlbumTitle() {
 export async function DeployBerry(blockchain: Blockchain, deployer: SandboxContract<TreasuryContract>): Promise<SandboxContract<Berry>> {
     const berry = blockchain.openContract(await Berry.fromInit(deployer.address));
 
-
     const deployResult = await berry.send(
         deployer.getSender(),
         {
