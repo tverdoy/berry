@@ -8,7 +8,7 @@ import {
     GetRandomAlbumTitle,
     GetRandomSongTitle, PrettyLogNamedTransactions,
 } from "./utils";
-import {toNano} from "@ton/core";
+import {fromNano, toNano} from "@ton/core";
 import {Song} from "../build/Song/tact_Song";
 import {Album} from "../build/Song/tact_Album";
 import '@ton/test-utils';
@@ -69,9 +69,10 @@ describe('Song', () => {
 
         ExceptTransactions(sendResult.transactions, [
             {from: deployer.address, to: berry.address},
-            {from: berry.address, to: album.address, success: true},
-            {from: album.address, to: berry.address, success: true},
-            {from: berry.address, to: song.address, success: false, deploy: true},
+            {from: berry.address, to: album.address},
+            {from: album.address, to: berry.address},
+            {from: berry.address, to: song.address},
+            {from: song.address, to: deployer.address},
         ])
 
         const songTotal = await berry.getTotalSongs()
@@ -83,10 +84,12 @@ describe('Song', () => {
     it('add song without album', async () => {
         const songTitleFoo = GetRandomSongTitle()
 
+        const before = await  deployer.getBalance()
+
         const sendResult = await berry.send(
             deployer.getSender(),
             {
-                value: toNano("0.2")
+                value: toNano("2")
             },
             {
                 $$type: "AddSong",
@@ -111,13 +114,18 @@ describe('Song', () => {
 
         ExceptTransactions(sendResult.transactions, [
             {from: deployer.address, to: berry.address},
-            {from: berry.address, to: song.address, success: false, deploy: true},
+            {from: berry.address, to: song.address},
+            {from: song.address, to: deployer.address},
         ])
 
         const songTotal = await berry.getTotalSongs()
         const albumTotal = await berry.getTotalAlbums()
         expect(songTotal).toBeLessThanOrEqual(1n)
         expect(albumTotal).toBeLessThanOrEqual(0n)
+
+        printTransactionFees(sendResult.transactions)
+        const after = await  deployer.getBalance()
+        console.log(fromNano(after - before))
     });
 
     it('should failed with empty song title', async () => {

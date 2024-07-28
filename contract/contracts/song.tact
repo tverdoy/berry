@@ -33,7 +33,7 @@ trait SongMaster {
     // If [AddSong].albumTitle is not null then create an album.
     // Otherwise, create a song.
     receive(addSong: AddSong) {
-        require(context().sender == self.owner, "Only the owner can add songs");
+        require(sender() == self.owner, "Only the owner can add songs");
 
         // business logic checks
         let songTitleBytes = addSong.songTitle.asSlice().bits();
@@ -48,44 +48,39 @@ trait SongMaster {
         }
 
         if (addSong.albumTitle != null) {
-            self.createAlbum(addSong.albumTitle!!, addSong.songTitle)
+            self.createAlbum(addSong.albumTitle!!, addSong.songTitle, sender())
         } else {
-            self.createSong(addSong.songTitle, null)
+            self.createSong(addSong.songTitle, null, sender())
         }
     }
 
     // This message notification from Album contract when a song is added to the album.
     // It is used to create a song in the SongMaster contract.
     receive(addSong: AddedSongToAlbumNotification) {
-        let albumInit = self.getAlbumInit(addSong.albumTitle);
-        require(context().sender == contractAddress(albumInit), "Only Album contract can notify add songs to the album");
+        let albumAddress = contractAddress(initOf Album(myAddress(), addSong.albumTitle));
+        require(sender() == albumAddress, "Only Album contract can notify add songs to the album");
 
-        self.createSong(addSong.songTitle, contractAddress(albumInit))
+        self.createSong(addSong.songTitle, albumAddress, addSong.forwardAddress)
     }
 
     // Get the address of the song.
     get fun songAddress(songTitle: String, albumTitle: String?): Address {
-        let albumAddress: Address? = null;
-        if albumTitle != null {
-            let albumInit: StateInit = self.getAlbumInit(albumTitle!!);
-            albumAddress = contractAddress(albumInit);
-        }
-
-        let songInit: StateInit = self.getSongInit(songTitle, albumAddress);
-
-        return contractAddress(songInit)
+        let albumAddress = albumTitle != null ? contractAddress(initOf Album(myAddress(), albumTitle!!)) : null;
+        return contractAddress(self.getSongInit(songTitle, albumAddress));
     }
 
+    // Bounce if failed to add song to album
+    bounced(_: bounced<AddSongToAlbum>) {
+        self.totalAlbums -= 1;
+    }
+
+    // Get total number songs
     get fun totalSongs(): Int {
         return self.totalSongs
     }
 
-    get fun totalAlbums(): Int {
-        return self.totalAlbums
-    }
-
     // Send a message to the Song contract to create a song.
-    fun createSong(songTitle: String, albumAddress: Address?) {
+    fun createSong(songTitle: String, albumAddress: Address?, forwardAddress: Address) {
         let songInit = self.getSongInit(songTitle, albumAddress);
 
         send(SendParameters{
@@ -93,25 +88,29 @@ trait SongMaster {
             value: 0,
             bounce: false,
             mode: SendRemainingValue,
+            body: ForwardAddSong{
+                forwardAddress: forwardAddress
+            }.toCell(),
             code: songInit.code,
             data: songInit.data
         });
     }
 
     // Send a message to the Album contract to create an album.
-    fun createAlbum(albumTitle: String, songTitle: String) {
-        let albumInit = self.getAlbumInit(albumTitle);
+    fun createAlbum(albumTitle: String, songTitle: String, forwardAddress: Address) {
+        let albumInit = initOf Album(myAddress(), albumTitle);
         let songAddress = self.songAddress(songTitle, albumTitle);
         self.totalAlbums += 1;
 
         send(SendParameters{
             to:  contractAddress(albumInit),
             value: 0,
-            bounce: false,
+            bounce: true,
             mode: SendRemainingValue,
-            body: AddSongToAlbum{
+            body: AddSongToAlbum {
                 songAddress: songAddress,
-                songTitle: songTitle
+                songTitle: songTitle,
+                forwardAddress: forwardAddress
             }.toCell(),
             code: albumInit.code,
             data: albumInit.data
@@ -122,15 +121,17 @@ trait SongMaster {
     fun getSongInit(songTitle: String, albumAdddress: Address?): StateInit {
         return initOf Song(myAddress(), songTitle, albumAdddress);
     }
+}
 
-    // Get the initial state of the Album contract.
-    fun getAlbumInit(albumTitle: String): StateInit {
-        return initOf Album(myAddress(), albumTitle);
-    }
+message ForwardAddSong {
+    forwardAddress: Address
 }
 
 // Song is contract that represents a song.
 contract Song with Ownable {
+    const minTonsForStorage: Int = ton("0.019");
+    const gasConsumption: Int = ton("0.013");
+
     owner: Address;
     title: String;              // Title of the song
     albumAddress: Address?;     // Address of the album. Optional because a song can be added without an album
@@ -139,6 +140,17 @@ contract Song with Ownable {
         self.owner = owner;
         self.title = title;
         self.albumAddress = albumAddress;
+    }
+
+    receive(forward: ForwardAddSong) {
+        require(sender() == self.owner, "Only the owner can add songs");
+
+        send(SendParameters{
+            to: forward.forwardAddress,
+            value: 0,
+            bounce: false,
+            mode: SendRemainingValue,
+        });
     }
 
     get fun title(): String {

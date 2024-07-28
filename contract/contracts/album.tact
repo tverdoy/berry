@@ -7,13 +7,34 @@ const MaxSongsInAlbum: Int = 50;    // Maximum number of songs in an album
 // Message for adding a song to the Album contract
 message AddSongToAlbum {
     songAddress: Address;   // Address of the song
-    songTitle: String       // Title of the song
+    songTitle: String;      // Title of the song
+
+    forwardAddress: Address;
 }
 
 // Message notification when a song is added to the album
 message AddedSongToAlbumNotification {
     songTitle: String;  // Title of the song
-    albumTitle: String  // Title of the album
+    albumTitle: String; // Title of the album
+
+    forwardAddress: Address;
+}
+
+trait AlbumMaster {
+    owner: Address;
+
+    totalAlbums: Int;   // Total number albums
+
+    // Get total number albums
+    get fun totalAlbums(): Int {
+        return self.totalAlbums
+    }
+
+    // Get the address of the song.
+    get fun albumAddress(albumTitle: String): Address {
+        return contractAddress(initOf Album(myAddress(), albumTitle));
+    }
+
 }
 
 // Album is a contract that manages an album.
@@ -30,23 +51,18 @@ contract Album with Ownable {
 
     // Add a song to the album and notify the owner.
     receive(addSong: AddSongToAlbum) {
-        require(context().sender == self.owner, "Only the owner can add songs to the album");
+        require(sender() == self.owner, "Only the owner can add songs to the album");
         require(self.lenghtSongs + 1 <= MaxSongsInAlbum, "No space in the album for new song!");
         require(!self.hasSong(addSong.songAddress), "The song is already on the album");
 
         self.lenghtSongs += 1;
         self.songs.set(self.lenghtSongs, addSong.songAddress);
 
-        send(SendParameters{
-            to:  self.owner,
-            value: 0,
-            bounce: false,
-            mode: SendRemainingValue,
-            body: AddedSongToAlbumNotification{
-                songTitle: addSong.songTitle,
-                albumTitle: self.title
-            }.toCell(),
-        });
+        self.reply(AddedSongToAlbumNotification{
+            songTitle: addSong.songTitle,
+            albumTitle: self.title,
+            forwardAddress: addSong.forwardAddress
+        }.toCell());
     }
 
     get fun title(): String {
