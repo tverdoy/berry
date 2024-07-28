@@ -25,11 +25,11 @@ describe('Song', () => {
         const sendResult = await berry.send(
             deployer.getSender(),
             {
-                value: toNano("0.2")
+                value: toNano("0.05")
             },
             {
                 $$type: "AddSong",
-                title: songTitleFoo,
+                songTitle: songTitleFoo,
                 albumTitle: albumTitleFoo
             }
         )
@@ -53,6 +53,13 @@ describe('Song', () => {
 
         expect(albumTitleFoo).toEqual(albumTitleBlockchain)
 
+
+        const songOwner = await song.getOwner()
+        const albumOwner = await album.getOwner()
+
+        expect(songOwner).toEqualAddress(berry.address)
+        expect(albumOwner).toEqualAddress(berry.address)
+
         ExceptTransactions(sendResult.transactions, [
             {from: deployer.address, to: berry.address},
             {from: berry.address, to: album.address, success: true},
@@ -71,7 +78,7 @@ describe('Song', () => {
             },
             {
                 $$type: "AddSong",
-                title: songTitleFoo,
+                songTitle: songTitleFoo,
                 albumTitle: null
             }
         )
@@ -86,6 +93,9 @@ describe('Song', () => {
 
         const songAlbumAddress = await song.getAlbum()
         expect(songAlbumAddress).toBeNull()
+
+        const songOwner = await song.getOwner()
+        expect(songOwner).toEqualAddress(berry.address)
 
         ExceptTransactions(sendResult.transactions, [
             {from: deployer.address, to: berry.address},

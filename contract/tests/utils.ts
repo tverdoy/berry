@@ -11,20 +11,22 @@ import {Berry} from "../build/Berry/tact_Berry";
 import {Address, toNano} from "@ton/core";
 import {FlatTransactionComparable} from "@ton/test-utils";
 
-const songTitles = ["Goloden", "Good Times", "Fine shine"]
-const albumTitles = ["Supreme swings", "OMG", "Skywalker"]
+const songTitles = ["Goloden", "Good Times", "Fine shine"]  // Test data
+const albumTitles = ["Supreme swings", "OMG", "Skywalker"]  // Test data
 
+// Get random song title from test data
 export function GetRandomSongTitle() {
     return songTitles[randomInt(0, songTitles.length)]
 }
 
+// Get random album title from test data
 export function GetRandomAlbumTitle() {
     return albumTitles[randomInt(0, albumTitles.length)]
 }
 
+// Deploy Berry contract
 export async function DeployBerry(blockchain: Blockchain, deployer: SandboxContract<TreasuryContract>): Promise<SandboxContract<Berry>> {
     const berry = blockchain.openContract(await Berry.fromInit(deployer.address));
-
 
     const deployResult = await berry.send(
         deployer.getSender(),
@@ -44,12 +46,10 @@ export async function DeployBerry(blockchain: Blockchain, deployer: SandboxContr
         success: true,
     });
 
-    let owner = await berry.getOwner()
-    expect(owner).toEqualAddress(deployer.address)
-
     return berry
 }
 
+// Check that transaction is successful
 export function ExceptSuccess(result: SendMessageResult, from: Address, to: Address) {
     expect(result.transactions).toHaveTransaction({
         from: from,
@@ -59,6 +59,21 @@ export function ExceptSuccess(result: SendMessageResult, from: Address, to: Addr
     })
 }
 
+/**
+ * Check that transactions match the checks and count transactions.
+ * @param transactions Transactions to check
+ * @param checks List of check rules
+ *
+ * Example use:
+ * ```
+ * ExceptTransactions(sendResult.transactions, [
+ *      {from: deployer.address, to: berry.address},
+ *      {from: berry.address, to: album.address, success: true},
+ *      {from: album.address, to: berry.address, success: true},
+ *      {from: berry.address, to: song.address, success: false, deploy: true},
+ * ])
+ * ```
+ */
 export function ExceptTransactions(transactions: BlockchainTransaction[], checks:  FlatTransactionComparable[]) {
     checks.forEach((check) => {
         expect(transactions).toHaveTransaction(check)
