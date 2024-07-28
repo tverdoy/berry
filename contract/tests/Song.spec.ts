@@ -53,6 +53,13 @@ describe('Song', () => {
 
         expect(albumTitleFoo).toEqual(albumTitleBlockchain)
 
+
+        const songOwner = await song.getOwner()
+        const albumOwner = await album.getOwner()
+
+        expect(songOwner).toEqualAddress(berry.address)
+        expect(albumOwner).toEqualAddress(berry.address)
+
         ExceptTransactions(sendResult.transactions, [
             {from: deployer.address, to: berry.address},
             {from: berry.address, to: album.address, success: true},
@@ -86,6 +93,9 @@ describe('Song', () => {
 
         const songAlbumAddress = await song.getAlbum()
         expect(songAlbumAddress).toBeNull()
+
+        const songOwner = await song.getOwner()
+        expect(songOwner).toEqualAddress(berry.address)
 
         ExceptTransactions(sendResult.transactions, [
             {from: deployer.address, to: berry.address},

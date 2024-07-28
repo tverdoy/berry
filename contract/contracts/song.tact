@@ -2,17 +2,34 @@ import "@stdlib/deploy";
 import "@stdlib/ownable";
 import "./album";
 
+// Message for adding a song to the SongMaster contract
 message AddSong {
-    songTitle: String;
-    albumTitle: String?;
+    songTitle: String;      // Title of the song
+    albumTitle: String?;    // Title of the album. Optional because a song can be added without an album
 }
 
+// SongMaster is the main contract that manages songs.
+//
+// Can:
+// - Add songs (with and without an album)
+//
+// Add song message flow:
+//      1. Deployer -> Berry (SongMaster) [AddSong]
+//      if [AddSong].albumTitle is not null then create album:
+//          2. Berry (SongMaster) -> Album [AddSongToAlbum]
+//          3. Album -> Berry (SongMaster) [AddedSongToAlbumNotification]
+//          4. Berry (SongMaster) -> Song [init]
+//      else create song:
+//          2. Berry (SongMaster) -> Song [init]
 trait SongMaster {
     owner: Address;
 
-    totalSongs: Int;
-    totalAlbums: Int;
+    totalSongs: Int;    // Total number songs
+    totalAlbums: Int;   // Total number albums
 
+    // Add a song to the system.
+    // If [AddSong].albumTitle is not null then create an album.
+    // Otherwise, create a song.
     receive(addSong: AddSong) {
         require(context().sender == self.owner, "Only the owner can add songs");
 
@@ -23,6 +40,8 @@ trait SongMaster {
         }
     }
 
+    // This message notification from Album contract when a song is added to the album.
+    // It is used to create a song in the SongMaster contract.
     receive(addSong: AddedSongToAlbumNotification) {
         let albumInit = self.getAlbumInit(addSong.albumTitle);
         require(context().sender == contractAddress(albumInit), "Only Album contract can notify add songs to the album");
@@ -30,6 +49,7 @@ trait SongMaster {
         self.createSong(addSong.songTitle, contractAddress(albumInit))
     }
 
+    // Send a message to the Song contract to create a song.
     fun createSong(songTitle: String, albumAddress: Address?) {
         let songInit = self.getSongInit(songTitle, albumAddress);
 
@@ -43,6 +63,7 @@ trait SongMaster {
         });
     }
 
+    // Send a message to the Album contract to create an album.
     fun createAlbum(albumTitle: String, songTitle: String) {
         let albumInit = self.getAlbumInit(albumTitle);
         let songAddress = self.songAddress(songTitle, albumTitle);
@@ -62,6 +83,7 @@ trait SongMaster {
         });
     }
 
+    // Get the address of the song.
     get fun songAddress(songTitle: String, albumTitle: String?): Address {
         let albumAddress: Address? = null;
         if albumTitle != null {
@@ -74,19 +96,22 @@ trait SongMaster {
         return contractAddress(songInit)
     }
 
+    // Get the initial state of the Song contract.
     fun getSongInit(songTitle: String, albumAdddress: Address?): StateInit {
         return initOf Song(myAddress(), songTitle, albumAdddress);
     }
 
+    // Get the initial state of the Album contract.
     fun getAlbumInit(albumTitle: String): StateInit {
         return initOf Album(myAddress(), albumTitle);
     }
 }
 
+// Song is contract that represents a song.
 contract Song with Ownable {
     owner: Address;
-    title: String;
-    albumAddress: Address?;
+    title: String;              // Title of the song
+    albumAddress: Address?;     // Address of the album. Optional because a song can be added without an album
 
     init(owner: Address, title: String, albumAddress: Address?) {
         self.owner = owner;

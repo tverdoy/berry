@@ -15,7 +15,7 @@ describe('Berry', () => {
         berry = await DeployBerry(blockchain, deployer);
     });
 
-    it('Owner check', async () => {
+    it('owner check', async () => {
         let owner = await berry.getOwner()
         expect(owner).toEqualAddress(deployer.address)
     });
