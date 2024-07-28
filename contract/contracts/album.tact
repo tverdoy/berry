@@ -11,7 +11,7 @@ message AddSongToAlbum {
 
 message AddedSongToAlbumNotification {
     songTitle: String;
-    albumAddress: Address
+    albumTitle: String
 }
 
 contract Album with Ownable {
@@ -26,6 +26,8 @@ contract Album with Ownable {
     }
 
     receive(addSong: AddSongToAlbum) {
+        require(context().sender == self.owner, "Only the owner can add songs to the album");
+
         require(self.lenghtSongs + 1 <= MaxSongsInAlbum, "No space in the album for new song!");
         require(!self.hasSong(addSong.songAddress), "The song is already on the album");
 
@@ -40,7 +42,7 @@ contract Album with Ownable {
             mode: SendRemainingValue,
             body: AddedSongToAlbumNotification{
                 songTitle: addSong.songTitle,
-                albumAddress: myAddress()
+                albumTitle: self.title
             }.toCell(),
         });
     }

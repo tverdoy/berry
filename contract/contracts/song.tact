@@ -8,10 +8,14 @@ message AddSong {
 }
 
 trait SongMaster {
+    owner: Address;
+
     totalSongs: Int;
     totalAlbums: Int;
 
     receive(addSong: AddSong) {
+        require(context().sender == self.owner, "Only the owner can add songs");
+
         if (addSong.albumTitle != null) {
             self.createAlbum(addSong.albumTitle!!, addSong.songTitle)
         } else {
@@ -20,7 +24,10 @@ trait SongMaster {
     }
 
     receive(addSong: AddedSongToAlbumNotification) {
-        self.createSong(addSong.songTitle, addSong.albumAddress)
+        let albumInit = self.getAlbumInit(addSong.albumTitle);
+        require(context().sender == contractAddress(albumInit), "Only Album contract can notify add songs to the album");
+
+        self.createSong(addSong.songTitle, contractAddress(albumInit))
     }
 
     fun createSong(songTitle: String, albumAddress: Address?) {

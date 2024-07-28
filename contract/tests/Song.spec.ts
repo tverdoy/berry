@@ -59,7 +59,6 @@ describe('Song', () => {
             {from: album.address, to: berry.address, success: true},
             {from: berry.address, to: song.address, success: false, deploy: true},
         ])
-        blockchain
     });
 
     it('add song without album', async () => {
