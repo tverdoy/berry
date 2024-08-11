@@ -230,6 +230,7 @@ contract Song with Ownable {
         return self.albumAddress
     }
 
+    // If ownerSong is set then the song is created.
     get fun ownerSong(): Address? {
         return self.ownerSong
     }

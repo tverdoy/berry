@@ -8,7 +8,7 @@ import {
     GetRandomAlbumTitle,
     GetRandomSongTitle,
 } from "./utils";
-import {fromNano, toNano} from "@ton/core";
+import {toNano} from "@ton/core";
 import {Song} from "../build/Song/tact_Song";
 import {Album} from "../build/Song/tact_Album";
 import '@ton/test-utils';
