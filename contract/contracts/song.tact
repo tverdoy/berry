@@ -4,6 +4,9 @@ import "./album";
 
 const MaxBytesTitleChars: Int = 800;
 
+const TonForStorageSong: Int = ton("0.2");
+const FeeForAddSong: Int = ton("0.01");
+
 // Message for adding a song to the SongMaster contract
 message AddSong {
     songTitle: String;      // Title of the song
@@ -41,7 +44,6 @@ trait SongMaster {
 
         if (addSong.albumTitle != null) {
             let albumTitleBytes = addSong.albumTitle!!.asSlice().bits();
-
             require(songTitleBytes != 0, "Song title cannot be empty");
             require(albumTitleBytes != 0, "Album title cannot be empty");
             require(albumTitleBytes <= MaxBytesTitleChars, "Album title cannot be more than 100 characters");
@@ -82,15 +84,16 @@ trait SongMaster {
     // Send a message to the Song contract to create a song.
     fun createSong(songTitle: String, albumAddress: Address?, forwardAddress: Address) {
         let songInit = self.getSongInit(songTitle, albumAddress);
+        let forwardValue = context().value - (FeeForAddSong + context().readForwardFee() * 25);
 
         send(SendParameters{
             to: contractAddress(songInit),
-            value: 0,
-            bounce: false,
-            mode: SendRemainingValue,
+            value: forwardValue,
+            mode: SendPayGasSeparately,
             body: ForwardAddSong{
                 forwardAddress: forwardAddress
             }.toCell(),
+            bounce: false,
             code: songInit.code,
             data: songInit.data
         });
@@ -129,8 +132,7 @@ message ForwardAddSong {
 
 // Song is contract that represents a song.
 contract Song with Ownable {
-    const minTonsForStorage: Int = ton("0.019");
-    const gasConsumption: Int = ton("0.013");
+    override const storageReserve: Int = ton("0.2"); // Should be same as TonForStorageSong
 
     owner: Address;
     title: String;              // Title of the song
@@ -145,12 +147,7 @@ contract Song with Ownable {
     receive(forward: ForwardAddSong) {
         require(sender() == self.owner, "Only the owner can add songs");
 
-        send(SendParameters{
-            to: forward.forwardAddress,
-            value: 0,
-            bounce: false,
-            mode: SendRemainingValue,
-        });
+        self.forward(forward.forwardAddress, null, false, null);
     }
 
     get fun title(): String {

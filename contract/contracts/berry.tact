@@ -6,6 +6,8 @@ import "./album";
 // Berry is a contract that manages all data.
 // This entry point is the main contract that will be deployed.
 contract Berry with Deployable, Ownable, SongMaster, AlbumMaster {
+    override const storageReserve: Int = ton("0.5");
+
     owner: Address;
 
     totalSongs: Int = 0;    // Total number of songs
@@ -14,4 +16,6 @@ contract Berry with Deployable, Ownable, SongMaster, AlbumMaster {
     init(owner: Address) {
         self.owner = owner;
     }
+
+    receive() {}
 }

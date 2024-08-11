@@ -31,7 +31,7 @@ export async function DeployBerry(blockchain: Blockchain, deployer: SandboxContr
     const deployResult = await berry.send(
         deployer.getSender(),
         {
-            value: toNano('0.05'),
+            value: toNano('1'),
         },
         {
             $$type: 'Deploy',

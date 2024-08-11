@@ -39,6 +39,8 @@ trait AlbumMaster {
 
 // Album is a contract that manages an album.
 contract Album with Ownable {
+    override const storageReserve: Int = ton("0.2");
+
     owner: Address;
     title: String;                          // Title of the album
     songs: map<Int as uint16, Address>;     // List of songs in the album
@@ -49,6 +51,8 @@ contract Album with Ownable {
         self.title = title;
     }
 
+    receive() {}
+
     // Add a song to the album and notify the owner.
     receive(addSong: AddSongToAlbum) {
         require(sender() == self.owner, "Only the owner can add songs to the album");
@@ -58,7 +62,7 @@ contract Album with Ownable {
         self.lenghtSongs += 1;
         self.songs.set(self.lenghtSongs, addSong.songAddress);
 
-        self.reply(AddedSongToAlbumNotification{
+        self.notify(AddedSongToAlbumNotification{
             songTitle: addSong.songTitle,
             albumTitle: self.title,
             forwardAddress: addSong.forwardAddress
