@@ -18,4 +18,15 @@ contract Berry with Deployable, Ownable, SongMaster, AlbumMaster {
     }
 
     receive() {}
+
+    receive("withdraw safe") {
+        self.requireOwner();
+
+        send(SendParameters{
+            to: sender(),
+            bounce: true,
+            value: myBalance() - context().value - self.storageReserve,
+            mode: SendRemainingValue + SendIgnoreErrors
+        });
+    }
 }

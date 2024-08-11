@@ -6,7 +6,7 @@ import {
     ExceptSuccess,
     ExceptTransactions,
     GetRandomAlbumTitle,
-    GetRandomSongTitle, PrettyLogNamedTransactions,
+    GetRandomSongTitle,
 } from "./utils";
 import {fromNano, toNano} from "@ton/core";
 import {Song} from "../build/Song/tact_Song";
@@ -57,26 +57,36 @@ describe('Song', () => {
 
         const album: SandboxContract<Album> = blockchain.openContract(Album.fromAddress(songAlbumAddress))
         const albumTitleBlockchain = await album.getTitle()
+        const albumLengthSongs = await album.getLenghtSongs();
+        const albumSongs = await album.getSongs();
 
         expect(albumTitleFoo).toEqual(albumTitleBlockchain)
-
+        expect(albumLengthSongs).toEqual(1n)
+        expect(albumSongs.size).toEqual(1)
+        expect(albumSongs.get(albumSongs.keys()[0])).toEqualAddress(song.address)
 
         const songOwner = await song.getOwner()
         const albumOwner = await album.getOwner()
+        const songOwnerOf = await song.getOwnerSong()
+        const albumOwnerOf = await album.getOwnerAlbum()
 
         expect(songOwner).toEqualAddress(berry.address)
         expect(albumOwner).toEqualAddress(berry.address)
+        expect(songOwnerOf).toEqualAddress(deployer.address)
+        expect(albumOwnerOf).toEqualAddress(deployer.address)
 
         ExceptTransactions(sendResult.transactions, [
             {from: deployer.address, to: berry.address},
             {from: berry.address, to: album.address},
             {from: album.address, to: berry.address},
             {from: berry.address, to: song.address},
-            {from: song.address, to: deployer.address},
+            {from: song.address, to: berry.address},
+            {from: berry.address, to: deployer.address},
         ])
 
         const songTotal = await berry.getTotalSongs()
         const albumTotal = await berry.getTotalAlbums()
+
         expect(songTotal).toBeLessThanOrEqual(1n)
         expect(albumTotal).toBeLessThanOrEqual(1n)
     });
@@ -112,7 +122,8 @@ describe('Song', () => {
         ExceptTransactions(sendResult.transactions, [
             {from: deployer.address, to: berry.address},
             {from: berry.address, to: song.address},
-            {from: song.address, to: deployer.address},
+            {from: song.address, to: berry.address},
+            {from: berry.address, to: deployer.address},
         ])
 
         const songTotal = await berry.getTotalSongs()
@@ -212,6 +223,54 @@ describe('Song', () => {
 
         const addressSong = await berry.getSongAddress(songTitleFoo, albumTitleFoo)
         const song: SandboxContract<Song> = blockchain.openContract(Song.fromAddress(addressSong))
+        const songAlbumAddress = await song.getAlbum()
+        const album: SandboxContract<Album> = blockchain.openContract(Album.fromAddress(songAlbumAddress!))
+
+        const balanceDeployerAfter = await deployer.getBalance()
+        const balanceBerryAfter = (await blockchain.getContract(berry.address)).balance
+        const songBalance = (await blockchain.getContract(song.address)).balance
+        const albumBalance = (await blockchain.getContract(album.address)).balance
+
+        expect(-(balanceDeployerAfter - balanceDeployerBefore)).toBeLessThan(toNano("0.6"))
+        expect(balanceBerryAfter - balanceBerryBefore).toBeGreaterThan(toNano("0.01"))
+        expect(songBalance).toBeLessThanOrEqual(toNano("0.2"))
+        expect(albumBalance).toBeLessThanOrEqual(toNano("0.2"))
+    });
+
+    it('double add same song with album', async () => {
+        const songTitleFoo = GetRandomSongTitle()
+        const albumTitleFoo = GetRandomAlbumTitle()
+
+        const sendResult = await berry.send(
+            deployer.getSender(),
+            {
+                value: toNano("10")
+            },
+            {
+                $$type: "AddSong",
+                songTitle: songTitleFoo,
+                albumTitle: albumTitleFoo
+            }
+        )
+
+        ExceptSuccess(sendResult, deployer.address, berry.address)
+
+        const sendResult2 = await berry.send(
+            deployer.getSender(),
+            {
+                value: toNano("10")
+            },
+            {
+                $$type: "AddSong",
+                songTitle: songTitleFoo,
+                albumTitle: albumTitleFoo
+            }
+        )
+
+        ExceptSuccess(sendResult2, deployer.address, berry.address)
+
+        const addressSong = await berry.getSongAddress(songTitleFoo, albumTitleFoo)
+        const song: SandboxContract<Song> = blockchain.openContract(Song.fromAddress(addressSong))
 
         const songTitleBlockchain = await song.getTitle()
         expect(songTitleFoo).toEqual(songTitleBlockchain)
@@ -224,38 +283,61 @@ describe('Song', () => {
         }
 
         const album: SandboxContract<Album> = blockchain.openContract(Album.fromAddress(songAlbumAddress))
-        const albumTitleBlockchain = await album.getTitle()
 
-        expect(albumTitleFoo).toEqual(albumTitleBlockchain)
-
-
-        const songOwner = await song.getOwner()
-        const albumOwner = await album.getOwner()
-
-        expect(songOwner).toEqualAddress(berry.address)
-        expect(albumOwner).toEqualAddress(berry.address)
-
-        ExceptTransactions(sendResult.transactions, [
+        ExceptTransactions(sendResult2.transactions, [
             {from: deployer.address, to: berry.address},
             {from: berry.address, to: album.address},
             {from: album.address, to: berry.address},
+            {from: berry.address, to: deployer.address},
+        ])
+    });
+
+    it('double add same song without album', async () => {
+        const balanceDeployerBefore = await deployer.getBalance()
+        const songTitleFoo = GetRandomSongTitle()
+
+        const sendResult = await berry.send(
+            deployer.getSender(),
+            {
+                value: toNano("10")
+            },
+            {
+                $$type: "AddSong",
+                songTitle: songTitleFoo,
+                albumTitle: null
+            }
+        )
+
+        ExceptSuccess(sendResult, deployer.address, berry.address)
+
+        const sendResult2 = await berry.send(
+            deployer.getSender(),
+            {
+                value: toNano("10")
+            },
+            {
+                $$type: "AddSong",
+                songTitle: songTitleFoo,
+                albumTitle: null
+            }
+        )
+
+        ExceptSuccess(sendResult2, deployer.address, berry.address)
+
+        const addressSong = await berry.getSongAddress(songTitleFoo, null)
+        const song: SandboxContract<Song> = blockchain.openContract(Song.fromAddress(addressSong))
+
+        ExceptTransactions(sendResult2.transactions, [
+            {from: deployer.address, to: berry.address},
             {from: berry.address, to: song.address},
-            {from: song.address, to: deployer.address},
+            {from: song.address, to: berry.address},
+            {from: berry.address, to: deployer.address},
         ])
 
-        const songTotal = await berry.getTotalSongs()
-        const albumTotal = await berry.getTotalAlbums()
-        expect(songTotal).toBeLessThanOrEqual(1n)
-        expect(albumTotal).toBeLessThanOrEqual(1n)
+        const songsTotal = await berry.getTotalSongs()
+        expect(Number(songsTotal)).toEqual(1)
 
         const balanceDeployerAfter = await deployer.getBalance()
-        const balanceBerryAfter = (await blockchain.getContract(berry.address)).balance
-        const songBalance = (await blockchain.getContract(song.address)).balance
-        const albumBalance = (await blockchain.getContract(album.address)).balance
-
-        expect(balanceDeployerAfter - balanceDeployerBefore).toBeGreaterThan(-toNano("0.6"))
-        expect(balanceBerryAfter - balanceBerryBefore).toBeGreaterThan(toNano("0.01"))
-        expect(songBalance).toBeLessThanOrEqual(toNano("0.2"))
-        expect(albumBalance).toBeLessThanOrEqual(toNano("0.2"))
+        expect(-(balanceDeployerAfter - balanceDeployerBefore)).toBeLessThan(toNano("0.4"))
     });
 })

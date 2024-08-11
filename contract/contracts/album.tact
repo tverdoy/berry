@@ -6,18 +6,37 @@ const MaxSongsInAlbum: Int = 50;    // Maximum number of songs in an album
 
 // Message for adding a song to the Album contract
 message AddSongToAlbum {
-    songAddress: Address;   // Address of the song
-    songTitle: String;      // Title of the song
-
-    forwardAddress: Address;
+    ownerAlbum: Address;        // Owner of the album
+    songAddress: Address;       // Address of the song
+    songTitle: String;          // Title of the song
+    ownerSongAddress: Address;  // Owner of the song
 }
 
+const AddedSongToAlbumStatusOk: Int = 1;                // Status code for adding a song to the album
+const AddedSongToAlbumOwnerAlreadySet: Int = 220;       // Status code for owner of album already set
+const AddedSongToAlbumSongsInAlbumOverflow: Int = 221;  // Status code for songs in album overflow
+const AddedSongToAlbumSongAlreadyOnAlbum: Int = 222;    // Status code for song already on the album
+
 // Message notification when a song is added to the album
-message AddedSongToAlbumNotification {
+message AddedSongToAlbumNotify {
     songTitle: String;  // Title of the song
     albumTitle: String; // Title of the album
 
-    forwardAddress: Address;
+    ownerSongAddress: Address;  // Owner of the song
+    status: Int;                // Status code
+    isWasInit: Bool = false;    // Flag for checking if the album was initialized
+}
+
+// Message for removing a song from the Album contract
+message RemoveSongFromAlbum {
+    songAddress: Address;   // Address of the song
+    ownerSongAddress: Address;
+}
+
+// Message notification when a song is removed from the album
+message RemoveSongFromAlbumNotify {
+    albumTitle: String;         // Title of the album
+    ownerSongAddress: Address;  // Owner of the song
 }
 
 trait AlbumMaster {
@@ -39,11 +58,13 @@ trait AlbumMaster {
 
 // Album is a contract that manages an album.
 contract Album with Ownable {
-    override const storageReserve: Int = ton("0.2");
+    override const storageReserve: Int = ton("0.2"); // Should be same as TonForStorageAlbum
 
     owner: Address;
+
+    ownerAlbum: Address?;                   // Owner of the album
     title: String;                          // Title of the album
-    songs: map<Int as uint16, Address>;     // List of songs in the album
+    songs: map<Int, Address>;               // List of songs in the album
     lenghtSongs: Int = 0;                   // Number of songs in the album
 
     init(owner: Address, title: String) {
@@ -55,17 +76,39 @@ contract Album with Ownable {
 
     // Add a song to the album and notify the owner.
     receive(addSong: AddSongToAlbum) {
-        require(sender() == self.owner, "Only the owner can add songs to the album");
-        require(self.lenghtSongs + 1 <= MaxSongsInAlbum, "No space in the album for new song!");
-        require(!self.hasSong(addSong.songAddress), "The song is already on the album");
+        self.requireOwner();
+        let status = AddedSongToAlbumStatusOk;
+        let isWasInit = self.ownerAlbum != null;
 
-        self.lenghtSongs += 1;
-        self.songs.set(self.lenghtSongs, addSong.songAddress);
+        if (self.ownerAlbum != null && self.ownerAlbum != addSong.ownerAlbum) {
+            status = AddedSongToAlbumOwnerAlreadySet;       // Owner of album already set
+        } else if (self.lenghtSongs >= MaxSongsInAlbum) {
+            status = AddedSongToAlbumSongsInAlbumOverflow;  // Songs in album is overflow
+        } else if (self.hasSong(addSong.songAddress)) {
+            status = AddedSongToAlbumSongAlreadyOnAlbum;    // The song is already on the album
+        } else {
+            self.ownerAlbum = addSong.ownerAlbum;
+            self.songs.set(addSong.songTitle.asComment().hash(), addSong.songAddress);
+            self.lenghtSongs += 1;
+        }
 
-        self.notify(AddedSongToAlbumNotification{
+        self.notify(AddedSongToAlbumNotify {
             songTitle: addSong.songTitle,
             albumTitle: self.title,
-            forwardAddress: addSong.forwardAddress
+            ownerSongAddress: addSong.ownerSongAddress,
+            status: status,
+            isWasInit: isWasInit
+        }.toCell());
+    }
+
+    // Remove a song from the album and notify the owner.
+    receive(removeSong: RemoveSongFromAlbum) {
+        self.requireOwner();
+        self.lenghtSongs -= 1;
+
+        self.notify(RemoveSongFromAlbumNotify{
+            albumTitle: self.title,
+            ownerSongAddress: removeSong.ownerSongAddress
         }.toCell());
     }
 
@@ -73,17 +116,26 @@ contract Album with Ownable {
         return self.title
     }
 
-    fun hasSong(song: Address): Bool {
-        let i = 0;
-        repeat (self.lenghtSongs) {
-            if self.songs.get(i) == song {
-                return true
-            }
+    get fun songs(): map<Int, Address> {
+        return self.songs
+    }
 
-            i += 1;
+    get fun lenghtSongs(): Int {
+        return self.lenghtSongs
+    }
+
+    get fun ownerAlbum(): Address? {
+        return self.ownerAlbum
+    }
+
+    // Return true if the song is in the album.
+    fun hasSong(song: Address): Bool {
+        foreach (key, value in self.songs) {
+           if value == song {
+               return true
+           }
         }
 
         return false
     }
-
 }
