@@ -31,7 +31,7 @@ export async function DeployBerry(blockchain: Blockchain, deployer: SandboxContr
     const deployResult = await berry.send(
         deployer.getSender(),
         {
-            value: toNano('0.05'),
+            value: toNano('1'),
         },
         {
             $$type: 'Deploy',
@@ -55,6 +55,16 @@ export function ExceptSuccess(result: SendMessageResult, from: Address, to: Addr
         from: from,
         to: to,
         success: true,
+        deploy: false
+    })
+}
+
+// Check that transaction is failed
+export function ExceptFailed(result: SendMessageResult, from: Address, to: Address) {
+    expect(result.transactions).toHaveTransaction({
+        from: from,
+        to: to,
+        aborted: true,
         deploy: false
     })
 }
@@ -102,7 +112,7 @@ export function ExceptTransactions(transactions: BlockchainTransaction[], checks
  *```
  */
 export function PrettyLogNamedTransactions(transactions: BlockchainTransaction[], contracts: {address: Address, name: string}[]) {
-    for (let i = 0; i < transactions.length - 1; i++) {
+    for (let i = 0; i < transactions.length; i++) {
         let pretty = prettyLogTransaction(transactions[i])
         contracts.forEach(contract => {
             pretty = pretty.replace(contract.address.toString(), contract.name)
