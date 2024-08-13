@@ -1,26 +1,37 @@
 # contract
 
-## Project structure
+cargo-near-new-project-description
 
--   `contracts` - source code of all the smart contracts of the project and their dependencies.
--   `wrappers` - wrapper classes (implementing `Contract` from ton-core) for the contracts, including any [de]serialization primitives and compilation functions.
--   `tests` - tests for the contracts.
--   `scripts` - scripts used by the project, mainly the deployment scripts.
+## How to Build Locally?
 
-## How to use
+Install [`cargo-near`](https://github.com/near/cargo-near) and run:
 
-### Build
+```bash
+cargo near build
+```
 
-`npx blueprint build` or `yarn blueprint build`
+## How to Test Locally?
 
-### Test
+```bash
+cargo test
+```
 
-`npx blueprint test` or `yarn blueprint test`
+## How to Deploy?
 
-### Deploy or run another script
+Deployment is automated with GitHub Actions CI/CD pipeline.
+To deploy manually, install [`cargo-near`](https://github.com/near/cargo-near) and run:
 
-`npx blueprint run` or `yarn blueprint run`
+```bash
+cargo near deploy <account-id>
+```
 
-### Add a new contract
+## Useful Links
 
-`npx blueprint create ContractName` or `yarn blueprint create ContractName`
+- [cargo-near](https://github.com/near/cargo-near) - NEAR smart contract development toolkit for Rust
+- [near CLI](https://near.cli.rs) - Interact with NEAR blockchain from command line
+- [NEAR Rust SDK Documentation](https://docs.near.org/sdk/rust/introduction)
+- [NEAR Documentation](https://docs.near.org)
+- [NEAR StackOverflow](https://stackoverflow.com/questions/tagged/nearprotocol)
+- [NEAR Discord](https://near.chat)
+- [NEAR Telegram Developers Community Group](https://t.me/neardev)
+- NEAR DevHub: [Telegram](https://t.me/neardevhub), [Twitter](https://twitter.com/neardevhub)
