@@ -9,6 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NEAR_CONTRACT_PR_STAGING_ACCOUNT_ID: gh-${{ github.event.number }}.${{ vars.NEAR_CONTRACT_STAGING_ACCOUNT_ID }}
+    defaults:
+      run:
+        working-directory: contract
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
