@@ -1,33 +1,40 @@
 version: '3'
 
+dotenv: ['account.env']
+
 tasks:
   build:
     cmds:
-      - cargo build --target wasm32-unknown-unknown --release
+      - cargo near build --no-docker
   test:
     cmds:
       - cargo test
-  deploy:
-    deps:
-      - build
-      - create-account
+  code-check:
+    aliases: ["cc"]
     cmds:
-      - echo "Deploying..."
+      - cargo fmt --all -- --check
+      - cargo clippy --all-targets --all-features -- -D warnings
+  deploy:
+    cmds:
+      - if [ ! -f ./account.env ]; then task create-account; fi
+      - cargo near deploy --no-docker $CONTACT_NAME without-init-call network-config testnet sign-with-keychain send
+      - echo "Deployed! 🎉"
+      - task get-account
 
   get-account:
     aliases: ["ga"]
     cmds:
-      - echo $NEAR_CONTRACT_PR_STAGING_ACCOUNT_ID
-      - echo https://testnet.nearblocks.io/address/$NEAR_CONTRACT_PR_STAGING_ACCOUNT_ID
+      - echo "Near contact account $CONTACT_NAME 📄:"
+      - echo "Explore https://testnet.nearblocks.io/address/$CONTACT_NAME 🌐"
 
   create-account:
     aliases: ["ca"]
     vars:
-      RANDOM: $(awk -v min=1 -v max=10000 'BEGIN{srand(); print int(min+rand()*(max-min+1))}')
       BRANCH: $(git rev-parse --abbrev-ref HEAD)
       COMMIT: $(git rev-parse --short HEAD)
-      ACCOUNT_ID: $(echo berry-{{.RANDOM}}-{{.COMMIT}}-{{.BRANCH}}.testnet)
+      ACCOUNT_ID: $(echo berry-{{.COMMIT}}-{{.BRANCH}}.testnet)
     cmds:
-      - export NEAR_CONTRACT_PR_STAGING_ACCOUNT_ID={{.ACCOUNT_ID}}
-      - near account create-account sponsor-by-faucet-service $NEAR_CONTRACT_PR_STAGING_ACCOUNT_ID autogenerate-new-keypair save-to-keychain network-config testnet create
-      - echo Created account $NEAR_CONTRACT_PR_STAGING_ACCOUNT_ID
+      - cmd: near account create-account sponsor-by-faucet-service {{.ACCOUNT_ID}} autogenerate-new-keypair save-to-keychain network-config testnet create
+        ignore_error: true
+      - echo CONTACT_NAME={{.ACCOUNT_ID}} > account.env
+      - echo Created account {{.ACCOUNT_ID}} ➕

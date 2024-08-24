@@ -1,10 +1,13 @@
 name: Test
 on:
-  workflow_call:
+  pull_request:
+    branches: [ dev, main ]
+  push:
+    branches: [ dev, main ]
 
 jobs:
-  code-formatting:
-    name: Code Formatting
+  code-check:
+    name: Code check ♻️
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -12,21 +15,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - run: cargo fmt --check
-
-  code-linter:
-    name: Code Linter
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: contract
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Run cargo clippy
-        run: |
-          rustup component add clippy
-          cargo clippy --all-features --workspace --tests -- --warn clippy::all --warn clippy::nursery
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - run: task code-check
 
   tests:
     name: Tests
@@ -37,5 +31,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Run cargo test
-        run: cargo test
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run tests 🧪
+        run: task test
