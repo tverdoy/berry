@@ -9,7 +9,11 @@ tasks:
   test:
     cmds:
       - cargo test
-  code-check:
+  format-code:
+    aliases: ["fc"]
+    cmds:
+      - cargo fmt --all
+  check-code:
     aliases: ["cc"]
     cmds:
       - cargo fmt --all -- --check

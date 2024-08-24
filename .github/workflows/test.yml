@@ -20,7 +20,7 @@ jobs:
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: task code-check
+      - run: task check-code
 
   tests:
     name: Tests
