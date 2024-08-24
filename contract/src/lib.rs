@@ -24,6 +24,10 @@ impl Contract {
         self.greeting.clone()
     }
 
+    pub fn get_hello(&self) -> String {
+        "hello from con".to_string()
+    }
+
     // Public method - accepts a greeting, such as "howdy", and records it
     pub fn set_greeting(&mut self, greeting: String) {
         log!("Saving greeting: {greeting}");
