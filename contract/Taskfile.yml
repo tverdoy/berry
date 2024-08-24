@@ -1,0 +1,33 @@
+version: '3'
+
+tasks:
+  build:
+    cmds:
+      - cargo build --target wasm32-unknown-unknown --release
+  test:
+    cmds:
+      - cargo test
+  deploy:
+    deps:
+      - build
+      - create-account
+    cmds:
+      - echo "Deploying..."
+
+  get-account:
+    aliases: ["ga"]
+    cmds:
+      - echo $NEAR_CONTRACT_PR_STAGING_ACCOUNT_ID
+      - echo https://testnet.nearblocks.io/address/$NEAR_CONTRACT_PR_STAGING_ACCOUNT_ID
+
+  create-account:
+    aliases: ["ca"]
+    vars:
+      RANDOM: $(awk -v min=1 -v max=10000 'BEGIN{srand(); print int(min+rand()*(max-min+1))}')
+      BRANCH: $(git rev-parse --abbrev-ref HEAD)
+      COMMIT: $(git rev-parse --short HEAD)
+      ACCOUNT_ID: $(echo berry-{{.RANDOM}}-{{.COMMIT}}-{{.BRANCH}}.testnet)
+    cmds:
+      - export NEAR_CONTRACT_PR_STAGING_ACCOUNT_ID={{.ACCOUNT_ID}}
+      - near account create-account sponsor-by-faucet-service $NEAR_CONTRACT_PR_STAGING_ACCOUNT_ID autogenerate-new-keypair save-to-keychain network-config testnet create
+      - echo Created account $NEAR_CONTRACT_PR_STAGING_ACCOUNT_ID
